@@ -13,6 +13,11 @@ export class FamiliesController {
     return this.familiesService.create(dto, req.user.id);
   }
 
+  @Get('current')
+  async getCurrentFamily(@Request() req: any) {
+    return this.familiesService.getCurrentFamily(req.user.id);
+  }
+
   @Get('my-families')
   async findMyFamilies(@Request() req: any) {
     return this.familiesService.findMyFamilies(req.user.id);

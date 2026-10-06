@@ -1,4 +1,5 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { Role } from '@prisma/client';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -17,4 +18,8 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   avatar?: string;
+
+  @IsOptional()
+  @IsEnum(Role, { message: 'Quyền người dùng không hợp lệ' })
+  role?: Role;
 }

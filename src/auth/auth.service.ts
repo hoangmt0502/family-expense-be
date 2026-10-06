@@ -29,10 +29,11 @@ export class AuthService {
         password: hashedPassword,
         fullName: dto.fullName,
         avatar: dto.avatar,
+        role: dto.role,
       },
     });
 
-    const token = this.generateToken(user.id, user.email);
+    const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       message: 'Đăng ký tài khoản thành công',
@@ -41,6 +42,8 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
         avatar: user.avatar,
+        role: user.role,
+        createdAt: user.createdAt,
       },
       accessToken: token,
     };
@@ -60,7 +63,7 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
-    const token = this.generateToken(user.id, user.email);
+    const token = this.generateToken(user.id, user.email, user.role);
 
     return {
       message: 'Đăng nhập thành công',
@@ -69,13 +72,15 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
         avatar: user.avatar,
+        role: user.role,
+        createdAt: user.createdAt,
       },
       accessToken: token,
     };
   }
 
-  private generateToken(userId: string, email: string): string {
-    const payload = { sub: userId, email };
+  private generateToken(userId: string, email: string, role?: string): string {
+    const payload = { sub: userId, email, role };
     return this.jwtService.sign(payload);
   }
 }

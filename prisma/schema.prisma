@@ -12,8 +12,10 @@ enum TransactionType {
 }
 
 enum Role {
-  ADMIN
-  MEMBER
+  ADMIN       // Quản trị viên hệ thống
+  HOST        // Chủ hộ / Trưởng gia đình (Quản lý toàn bộ thu chi, ngân sách, mời thành viên)
+  MEMBER      // Thành viên gia đình (Tạo giao dịch, xem báo cáo, đóng góp tiết kiệm)
+  VIEWER      // Người xem (Ví dụ: Con nhỏ, chỉ xem danh sách/báo cáo, không sửa xóa được)
 }
 
 model User {
