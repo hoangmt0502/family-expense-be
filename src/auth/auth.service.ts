@@ -43,6 +43,7 @@ export class AuthService {
         fullName: user.fullName,
         avatar: user.avatar,
         role: user.role,
+        hasFamily: false, // User mới tạo chắc chắn chưa thuộc Family nào
         createdAt: user.createdAt,
       },
       accessToken: token,
@@ -50,8 +51,14 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    // Query lấy User đồng thời include thông tin Family
+    // Lưu ý: Nếu quan hệ trong Prisma của bạn là Quan hệ 1-N (members: User[])
+    // thì dùng familyId hoặc family / families tùy theo schema.
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: {
+        family: true, // Hoặc `families: true` nếu 1 user thuộc nhiều family
+      },
     });
 
     if (!user) {
@@ -65,6 +72,12 @@ export class AuthService {
 
     const token = this.generateToken(user.id, user.email, user.role);
 
+    // Kiểm tra user đã có family hay chưa
+    // Nếu schema dùng `familyId`: Boolean(user.familyId)
+    // Nếu schema dùng `family`: Boolean(user.family)
+    // Nếu schema dùng `families`: user.families.length > 0
+    const hasFamily = Boolean(user.family || user.familyId);
+
     return {
       message: 'Đăng nhập thành công',
       user: {
@@ -73,6 +86,7 @@ export class AuthService {
         fullName: user.fullName,
         avatar: user.avatar,
         role: user.role,
+        hasFamily, // Trả về true/false cho FE
         createdAt: user.createdAt,
       },
       accessToken: token,
