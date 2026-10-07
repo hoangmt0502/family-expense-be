@@ -16,13 +16,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: { sub: string; email: string }) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, fullName: true, avatar: true },
+      // Bổ sung familyId: true ở đây
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        avatar: true,
+        familyId: true, 
+      },
     });
 
     if (!user) {
       throw new UnauthorizedException('Tài khoản không tồn tại hoặc token không hợp lệ');
     }
 
-    return user;
+    return user; // req.user bây giờ sẽ có đủ familyId!
   }
 }

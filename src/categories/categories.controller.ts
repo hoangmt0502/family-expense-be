@@ -8,6 +8,7 @@ import {
   Param,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
@@ -19,17 +20,21 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
+  // Lấy danh sách danh mục thuộc gia đình người dùng đang đăng nhập
+  @Get()
+  async findMine(@Request() req: any) {
+    const familyId = req.user?.familyId;
+    return this.categoriesService.findByFamily(familyId);
+  }
+
   // Tạo danh mục mới
   @Post()
   async create(@Request() req: any, @Body() dto: CreateCategoryDto) {
-    const familyId = req.user.familyId;
+    const familyId = req.user?.familyId;
+    if (!familyId) {
+      throw new BadRequestException('Tài khoản chưa thuộc gia đình nào');
+    }
     return this.categoriesService.create(familyId, dto);
-  }
-
-  // Lấy danh sách danh mục theo familyId
-  @Get('family/:familyId')
-  async findByFamily(@Param('familyId') familyId: string) {
-    return this.categoriesService.findByFamily(familyId);
   }
 
   // Cập nhật danh mục
@@ -39,14 +44,14 @@ export class CategoriesController {
     @Param('id') id: string,
     @Body() dto: UpdateCategoryDto,
   ) {
-    const familyId = req.user.familyId;
+    const familyId = req.user?.familyId;
     return this.categoriesService.update(id, familyId, dto);
   }
 
   // Xóa danh mục
   @Delete(':id')
   async remove(@Request() req: any, @Param('id') id: string) {
-    const familyId = req.user.familyId;
+    const familyId = req.user?.familyId;
     return this.categoriesService.remove(id, familyId);
   }
 }
