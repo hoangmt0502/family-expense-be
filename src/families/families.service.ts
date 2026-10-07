@@ -49,8 +49,6 @@ export class FamiliesService {
       return createdFamily;
     });
 
-    await this.categoriesService.createDefaultCategories(family.id);
-
     return family;
   }
 
