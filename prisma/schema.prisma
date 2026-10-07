@@ -67,23 +67,29 @@ model Category {
 }
 
 model Transaction {
-  id        String          @id @default(uuid())
-  amount    Decimal         @db.Decimal(12, 2)
-  type      TransactionType
-  note      String?
-  imageUrl  String?
-  date      DateTime        @default(now())
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id          String          @id @default(uuid())
+  amount      Float           // Số tiền giao dịch
+  type        TransactionType // INCOME (Thu) hoặc EXPENSE (Chi)
+  note        String?         // Ghi chú giao dịch
+  date        DateTime        @default(now()) // Ngày thực hiện giao dịch
+  imageUrl    String?         // Ảnh hóa đơn / chứng từ (nếu có)
 
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  familyId   String
-  family     Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // Khóa ngoại
+  categoryId  String
+  category    Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@map("transactions")
+  familyId    String
+  family      Family          @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([familyId])
+  @@index([categoryId])
+  @@index([date])
 }
 
 model Budget {

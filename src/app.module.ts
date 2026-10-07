@@ -10,6 +10,7 @@ import { CategoriesModule } from './categories/categories.module.js';
 import { BudgetsModule } from './budgets/budgets.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
+import { UploadModule } from './upload/upload.module.js';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AnalyticsModule } from './analytics/analytics.module.js';
     BudgetsModule,
     UsersModule,
     AnalyticsModule,
+    UploadModule
   ],
   controllers: [AppController],
   providers: [AppService],

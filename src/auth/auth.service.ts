@@ -33,7 +33,8 @@ export class AuthService {
       },
     });
 
-    const token = this.generateToken(user.id, user.email, user.role);
+    // User mới chưa có family
+    const token = this.generateToken(user.id, user.email, user.role, null);
 
     return {
       message: 'Đăng ký tài khoản thành công',
@@ -43,7 +44,8 @@ export class AuthService {
         fullName: user.fullName,
         avatar: user.avatar,
         role: user.role,
-        hasFamily: false, // User mới tạo chắc chắn chưa thuộc Family nào
+        hasFamily: false,
+        family: null, // Trả về null cho user mới
         createdAt: user.createdAt,
       },
       accessToken: token,
@@ -52,12 +54,10 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     // Query lấy User đồng thời include thông tin Family
-    // Lưu ý: Nếu quan hệ trong Prisma của bạn là Quan hệ 1-N (members: User[])
-    // thì dùng familyId hoặc family / families tùy theo schema.
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       include: {
-        family: true, // Hoặc `families: true` nếu 1 user thuộc nhiều family
+        family: true,
       },
     });
 
@@ -70,13 +70,11 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
-    const token = this.generateToken(user.id, user.email, user.role);
+    const familyId = user.familyId || user.family?.id || null;
+    const hasFamily = Boolean(familyId);
 
-    // Kiểm tra user đã có family hay chưa
-    // Nếu schema dùng `familyId`: Boolean(user.familyId)
-    // Nếu schema dùng `family`: Boolean(user.family)
-    // Nếu schema dùng `families`: user.families.length > 0
-    const hasFamily = Boolean(user.family || user.familyId);
+    // Mã hóa cả familyId vào JWT Token
+    const token = this.generateToken(user.id, user.email, user.role, familyId);
 
     return {
       message: 'Đăng nhập thành công',
@@ -86,15 +84,21 @@ export class AuthService {
         fullName: user.fullName,
         avatar: user.avatar,
         role: user.role,
-        hasFamily, // Trả về true/false cho FE
+        hasFamily,
+        family: user.family || null, // Trả về object family cho Frontend
         createdAt: user.createdAt,
       },
       accessToken: token,
     };
   }
 
-  private generateToken(userId: string, email: string, role?: string): string {
-    const payload = { sub: userId, email, role };
+  private generateToken(
+    userId: string,
+    email: string,
+    role?: string,
+    familyId?: string | null,
+  ): string {
+    const payload = { sub: userId, email, role, familyId };
     return this.jwtService.sign(payload);
   }
 }
