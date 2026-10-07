@@ -8,14 +8,12 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateFamilyDto } from './dto/create-family.dto.js';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto.js';
 import { randomBytes } from 'crypto';
-import { CategoriesService } from '../categories/categories.service.js';
 import { Role } from '@prisma/client';
 
 @Injectable()
 export class FamiliesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly categoriesService: CategoriesService,
   ) {}
 
   private generateInviteCode(): string {
