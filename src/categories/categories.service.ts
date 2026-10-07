@@ -1,55 +1,74 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
-import { TransactionType } from '@prisma/client';
-
-export const DEFAULT_CATEGORIES = [
-  // Chi tiêu (EXPENSE)
-  { name: 'Ăn uống', type: TransactionType.EXPENSE, icon: 'utensils' },
-  { name: 'Đi lại & Xăng xe', type: TransactionType.EXPENSE, icon: 'car' },
-  { name: 'Mua sắm & Hóa đơn', type: TransactionType.EXPENSE, icon: 'shopping-bag' },
-  { name: 'Giải trí & Du lịch', type: TransactionType.EXPENSE, icon: 'gamepad' },
-  { name: 'Y tế & Sức khỏe', type: TransactionType.EXPENSE, icon: 'heart-pulse' },
-  { name: 'Giáo dục & Học tập', type: TransactionType.EXPENSE, icon: 'graduation-cap' },
-  // Thu nhập (INCOME)
-  { name: 'Lương & Thưởng', type: TransactionType.INCOME, icon: 'wallet' },
-  { name: 'Đầu tư & Lãi', type: TransactionType.INCOME, icon: 'chart-line' },
-  { name: 'Thu nhập khác', type: TransactionType.INCOME, icon: 'coins' },
-];
+import { UpdateCategoryDto } from './dto/update-category.dto.js';
 
 @Injectable()
 export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Tự động sinh danh mục mặc định cho gia đình mới
-  async createDefaultCategories(familyId: string) {
-    const data = DEFAULT_CATEGORIES.map((cat) => ({
-      ...cat,
-      familyId,
-    }));
-
-    return this.prisma.category.createMany({
-      data,
+  // Lấy danh mục mặc định của hệ thống + danh mục riêng của gia đình
+  async findByFamily(familyId: string) {
+    return this.prisma.category.findMany({
+      where: {
+        OR: [{ familyId: null }, { familyId }],
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  // Tạo danh mục tùy chỉnh
-  async create(dto: CreateCategoryDto) {
+  // Tạo mới danh mục
+  async create(familyId: string, dto: CreateCategoryDto) {
     return this.prisma.category.create({
       data: {
-        name: dto.name,
-        type: dto.type,
-        icon: dto.icon,
-        familyId: dto.familyId,
+        ...dto,
+        familyId,
       },
     });
   }
 
-  // Lấy danh sách danh mục của 1 gia đình
-  async findByFamily(familyId: string) {
-    return this.prisma.category.findMany({
-      where: { familyId },
-      orderBy: { createdAt: 'asc' },
+  // Cập nhật danh mục
+  async update(id: string, familyId: string, dto: UpdateCategoryDto) {
+    const category = await this.prisma.category.findUnique({
+      where: { id },
+    });
+
+    if (!category) {
+      throw new NotFoundException('Không tìm thấy danh mục');
+    }
+
+    if (category.familyId !== familyId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền chỉnh sửa danh mục này',
+      );
+    }
+
+    return this.prisma.category.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  // Xóa danh mục
+  async remove(id: string, familyId: string) {
+    const category = await this.prisma.category.findUnique({
+      where: { id },
+    });
+
+    if (!category) {
+      throw new NotFoundException('Không tìm thấy danh mục');
+    }
+
+    if (category.familyId !== familyId) {
+      throw new ForbiddenException('Bạn không có quyền xóa danh mục này');
+    }
+
+    return this.prisma.category.delete({
+      where: { id },
     });
   }
 }

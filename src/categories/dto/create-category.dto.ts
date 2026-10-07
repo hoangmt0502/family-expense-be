@@ -2,19 +2,15 @@ import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { TransactionType } from '@prisma/client';
 
 export class CreateCategoryDto {
-  @IsNotEmpty({ message: 'Tên danh mục không được để trống' })
   @IsString()
+  @IsNotEmpty({ message: 'Tên danh mục không được để trống' })
   name: string;
 
-  @IsNotEmpty()
-  @IsEnum(TransactionType)
-  type: TransactionType;
-
+  @IsEnum(TransactionType, { message: 'Loại danh mục không hợp lệ' })
   @IsOptional()
-  @IsString()
-  icon?: string;
+  type?: TransactionType;
 
-  @IsNotEmpty()
   @IsString()
-  familyId: string;
+  @IsOptional()
+  imageUrl?: string;
 }
