@@ -54,7 +54,8 @@ model Category {
   id        String          @id @default(uuid())
   name      String
   type      TransactionType @default(EXPENSE)
-  icon      String?
+  icon      String?         // Tên Lucide icon hoặc Emoji (vd: "ShoppingBag", " Utensils")
+  imageUrl  String?         // URL ảnh được upload lên Cloudinary
   createdAt DateTime        @default(now())
 
   familyId     String?

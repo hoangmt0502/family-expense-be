@@ -21,7 +21,7 @@ export class CategoriesService {
     });
   }
 
-  // Tạo mới danh mục
+  // Tạo mới danh mục (dto đã bao gồm icon và/hoặc imageUrl nếu có)
   async create(familyId: string, dto: CreateCategoryDto) {
     return this.prisma.category.create({
       data: {
