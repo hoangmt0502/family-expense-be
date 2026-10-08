@@ -66,6 +66,11 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
+    // Nếu tài khoản chỉ đăng nhập bằng Google (chưa thiết lập mật khẩu)
+    if (!user.password) {
+      throw new BadRequestException('Tài khoản này được đăng ký qua Google. Vui lòng sử dụng Đăng nhập bằng Google!');
+    }
+
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
@@ -93,6 +98,71 @@ export class AuthService {
     };
   }
 
+  async validateGoogleUser(googleUser: {
+    googleId: string;
+    email: string;
+    fullName: string;
+    avatar?: string;
+  }) {
+    // 1. Tìm user theo googleId hoặc email
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ googleId: googleUser.googleId }, { email: googleUser.email }],
+      },
+      include: {
+        family: true,
+      },
+    });
+
+    // 2. Trường hợp User chưa tồn tại -> Tạo mới (không kèm password)
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          email: googleUser.email,
+          googleId: googleUser.googleId,
+          fullName: googleUser.fullName,
+          avatar: googleUser.avatar,
+        },
+        include: {
+          family: true,
+        },
+      });
+    } else if (!user.googleId) {
+      // 3. Nếu tài khoản đã tồn tại qua Đăng ký thường -> Liên kết thêm googleId
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId: googleUser.googleId,
+          avatar: user.avatar || googleUser.avatar,
+        },
+        include: {
+          family: true,
+        },
+      });
+    }
+
+    const familyId = user.familyId || user.family?.id || null;
+    const hasFamily = Boolean(familyId);
+
+    // Sinh JWT Token đồng bộ với cấu trúc chung
+    const token = this.generateToken(user.id, user.email, user.role, familyId);
+
+    return {
+      message: 'Đăng nhập Google thành công',
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        avatar: user.avatar,
+        role: user.role,
+        hasFamily,
+        family: user.family || null,
+        createdAt: user.createdAt,
+      },
+      accessToken: token,
+    };
+  }
+
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -100,6 +170,11 @@ export class AuthService {
 
     if (!user) {
       throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    // Nếu tài khoản Google chưa tạo mật khẩu bao giờ
+    if (!user.password) {
+      throw new BadRequestException('Tài khoản đăng nhập bằng Google chưa có mật khẩu để thay đổi!');
     }
 
     // 1. Kiểm tra mật khẩu hiện tại
