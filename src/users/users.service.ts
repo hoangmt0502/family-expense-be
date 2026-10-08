@@ -51,11 +51,12 @@ export class UsersService {
       },
       select: {
         id: true,
-        email: true,
         fullName: true,
+        email: true,
         avatar: true,
         role: true,
         familyId: true,
+        family: true
       },
     });
   }

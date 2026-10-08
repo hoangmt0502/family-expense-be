@@ -10,7 +10,10 @@ import {
   UseGuards,
   Request,
   BadRequestException,
+  Req,
+  Res,
 } from '@nestjs/common';
+import * as express from 'express';
 import { TransactionsService } from './transactions.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { UpdateTransactionDto } from './dto/update-transaction.dto.js';
@@ -67,5 +70,17 @@ export class TransactionsController {
   async remove(@Request() req: any, @Param('id') id: string) {
     const familyId = req.user.familyId;
     return this.transactionsService.remove(id, familyId);
+  }
+
+  @Get('export')
+  async exportCsv(@Req() req: any, @Res() res: express.Response) { // <--- Dùng express.Response
+    const familyId = req.user.familyId;
+    const csvData = await this.transactionsService.exportTransactionsCsv(familyId);
+
+    const filename = `Bao_Cao_Thu_Chi_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(csvData);
   }
 }

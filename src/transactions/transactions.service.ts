@@ -135,4 +135,31 @@ export class TransactionsService {
       where: { id },
     });
   }
+
+  async exportTransactionsCsv(familyId: string): Promise<string> {
+    const transactions = await this.prisma.transaction.findMany({
+      where: { familyId },
+      include: {
+        category: true,
+        user: true,
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    // Tạo Header cho CSV
+    const headers = ['Mã Giao Dịch', 'Ngày', 'Loại', 'Danh Mục', 'Số Tiền (VNĐ)', 'Ghi Chú', 'Người Tạo'];
+    const rows = transactions.map((t) => [
+      `"${t.id}"`,
+      `"${new Date(t.date).toLocaleDateString('vi-VN')}"`,
+      `"${t.type === 'EXPENSE' ? 'Chi tiêu' : 'Thu nhập'}"`,
+      `"${t.category?.name || 'Chưa phân loại'}"`,
+      `"${Number(t.amount)}"`,
+      `"${(t.note || '').replace(/"/g, '""')}"`, // Escape dấu ngoặc kép
+      `"${t.user?.fullName || ''}"`,
+    ]);
+
+    // Thêm UTF-8 BOM (\uFEFF) để Excel mở không bị lỗi font Tiếng Việt
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    return csvContent;
+  }
 }
