@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { UploadModule } from './upload/upload.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { GoalsModule } from './goals/goals.module.js';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { DashboardModule } from './dashboard/dashboard.module.js';
     UsersModule,
     AnalyticsModule,
     UploadModule,
-    DashboardModule
+    DashboardModule,
+    GoalsModule
   ],
   controllers: [AppController],
   providers: [AppService],
