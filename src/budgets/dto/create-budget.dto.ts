@@ -1,31 +1,29 @@
-import { IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNumber, IsString, IsNotEmpty, Min, Max } from 'class-validator';
 
 export class CreateBudgetDto {
-  @IsNotEmpty({ message: 'Số tiền hạn mức không được để trống' })
-  @Type(() => Number)
   @IsNumber()
-  @Min(0, { message: 'Số tiền phải lớn hơn hoặc bằng 0' })
+  @Min(1)
+  @IsNotEmpty()
   amount: number;
 
-  @IsNotEmpty()
-  @Type(() => Number)
   @IsNumber()
   @Min(1)
   @Max(12)
+  @IsNotEmpty()
   month: number;
 
-  @IsNotEmpty()
-  @Type(() => Number)
   @IsNumber()
-  @Min(2020)
+  @Min(2000)
+  @IsNotEmpty()
   year: number;
 
-  @IsNotEmpty()
   @IsString()
-  familyId: string;
-
   @IsNotEmpty()
-  @IsString()
   categoryId: string;
+}
+
+export class UpdateBudgetDto {
+  @IsNumber()
+  @Min(1)
+  amount: number;
 }

@@ -1,7 +1,17 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { BudgetsService } from './budgets.service.js';
-import { CreateBudgetDto } from './dto/create-budget.dto.js';
-import { QueryBudgetDto } from './dto/query-budget.dto.js';
+import { CreateBudgetDto, UpdateBudgetDto } from './dto/create-budget.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
 @Controller('budgets')
@@ -9,13 +19,38 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 export class BudgetsController {
   constructor(private readonly budgetsService: BudgetsService) {}
 
-  @Post()
-  async setBudget(@Body() dto: CreateBudgetDto) {
-    return this.budgetsService.setBudget(dto);
+  @Get()
+  async getBudgets(
+    @Req() req: any,
+    @Query('month') month: string,
+    @Query('year') year: string,
+  ) {
+    const familyId = req.user.familyId;
+    const m = month ? parseInt(month, 10) : new Date().getMonth() + 1;
+    const y = year ? parseInt(year, 10) : new Date().getFullYear();
+
+    return this.budgetsService.getBudgets(familyId, m, y);
   }
 
-  @Get('progress')
-  async getBudgetsWithProgress(@Query() query: QueryBudgetDto) {
-    return this.budgetsService.getBudgetsWithProgress(query);
+  @Post()
+  async createBudget(@Req() req: any, @Body() dto: CreateBudgetDto) {
+    const familyId = req.user.familyId;
+    return this.budgetsService.createBudget(familyId, dto);
+  }
+
+  @Patch(':id')
+  async updateBudget(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateBudgetDto,
+  ) {
+    const familyId = req.user.familyId;
+    return this.budgetsService.updateBudget(id, familyId, dto);
+  }
+
+  @Delete(':id')
+  async deleteBudget(@Req() req: any, @Param('id') id: string) {
+    const familyId = req.user.familyId;
+    return this.budgetsService.deleteBudget(id, familyId);
   }
 }

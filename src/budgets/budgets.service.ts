@@ -1,32 +1,81 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { CreateBudgetDto } from './dto/create-budget.dto.js';
-import { QueryBudgetDto } from './dto/query-budget.dto.js';
+import { CreateBudgetDto, UpdateBudgetDto } from './dto/create-budget.dto.js';
 
 @Injectable()
 export class BudgetsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
-  // Thiết lập hoặc cập nhật ngân sách (Upsert)
-  async setBudget(dto: CreateBudgetDto) {
-    return this.prisma.budget.upsert({
+  // 1. Lấy danh sách ngân sách theo tháng/năm + Tính thực tế đã chi (spent)
+  async getBudgets(familyId: string, month: number, year: number) {
+    const budgets = await this.prisma.budget.findMany({
+      where: {
+        familyId,
+        month,
+        year,
+      },
+      include: {
+        category: true,
+      },
+    });
+
+    // Lấy khoảng thời gian từ đầu tháng đến cuối tháng
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    // Tính tổng chi tiêu thực tế cho từng ngân sách
+    const budgetsWithSpent = await Promise.all(
+      budgets.map(async (budget) => {
+        const result = await this.prisma.transaction.aggregate({
+          _sum: {
+            amount: true,
+          },
+          where: {
+            familyId,
+            categoryId: budget.categoryId,
+            type: 'EXPENSE',
+            date: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+        });
+
+        return {
+          ...budget,
+          amount: Number(budget.amount),
+          spent: Number(result._sum.amount || 0),
+        };
+      }),
+    );
+
+    return budgetsWithSpent;
+  }
+
+  // 2. Tạo ngân sách mới (Upsert hoặc throw conflict nếu trùng)
+  async createBudget(familyId: string, dto: CreateBudgetDto) {
+    const existing = await this.prisma.budget.findUnique({
       where: {
         familyId_categoryId_month_year: {
-          familyId: dto.familyId,
+          familyId,
           categoryId: dto.categoryId,
           month: dto.month,
           year: dto.year,
         },
       },
-      update: {
-        amount: dto.amount,
-      },
-      create: {
+    });
+
+    if (existing) {
+      throw new ConflictException('Danh mục này đã được thiết lập ngân sách trong tháng!');
+    }
+
+    return this.prisma.budget.create({
+      data: {
         amount: dto.amount,
         month: dto.month,
         year: dto.year,
-        familyId: dto.familyId,
         categoryId: dto.categoryId,
+        familyId,
       },
       include: {
         category: true,
@@ -34,60 +83,35 @@ export class BudgetsService {
     });
   }
 
-  // Lấy danh sách ngân sách kèm tính toán chi tiêu thực tế trong tháng
-  async getBudgetsWithProgress(query: QueryBudgetDto) {
-    const { familyId, month, year } = query;
+  // 3. Cập nhật hạn mức ngân sách
+  async updateBudget(id: string, familyId: string, dto: UpdateBudgetDto) {
+    const budget = await this.prisma.budget.findFirst({
+      where: { id, familyId },
+    });
 
-    // 1. Lấy danh sách hạn mức ngân sách đã tạo
-    const budgets = await this.prisma.budget.findMany({
-      where: { familyId, month, year },
+    if (!budget) {
+      throw new NotFoundException('Không tìm thấy ngân sách');
+    }
+
+    return this.prisma.budget.update({
+      where: { id },
+      data: { amount: dto.amount },
       include: { category: true },
     });
+  }
 
-    // Xác định khoảng thời gian đầu tháng và cuối tháng
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-
-    // 2. Gom nhóm tổng số tiền đã chi tiêu theo danh mục trong tháng
-    const expensesGrouped = await this.prisma.transaction.groupBy({
-      by: ['categoryId'],
-      where: {
-        familyId,
-        type: 'EXPENSE',
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      _sum: {
-        amount: true,
-      },
+  // 4. Xóa ngân sách
+  async deleteBudget(id: string, familyId: string) {
+    const budget = await this.prisma.budget.findFirst({
+      where: { id, familyId },
     });
 
-    // Tạo bản đồ ánh xạ categoryId -> tổng chi tiêu
-    const expenseMap = new Map<string, number>();
-    expensesGrouped.forEach((item) => {
-      expenseMap.set(item.categoryId, Number(item._sum.amount || 0));
-    });
+    if (!budget) {
+      throw new NotFoundException('Không tìm thấy ngân sách');
+    }
 
-    // 3. Kết hợp ngân sách với tiến độ chi tiêu thực tế
-    return budgets.map((b) => {
-      const budgetAmount = Number(b.amount);
-      const spentAmount = expenseMap.get(b.categoryId) || 0;
-      const remainingAmount = budgetAmount - spentAmount;
-      const percentage = budgetAmount > 0 ? Math.min(Math.round((spentAmount / budgetAmount) * 100), 100) : 0;
-
-      return {
-        id: b.id,
-        categoryId: b.categoryId,
-        categoryName: b.category.name,
-        categoryIcon: b.category.icon,
-        budgetAmount,
-        spentAmount,
-        remainingAmount,
-        percentage,
-        isExceeded: spentAmount > budgetAmount,
-      };
+    return this.prisma.budget.delete({
+      where: { id },
     });
   }
 }
