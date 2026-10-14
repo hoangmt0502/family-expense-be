@@ -21,24 +21,26 @@ export class CategoriesService {
     });
   }
 
-  // Tạo mới danh mục cho gia đình (Chống trùng tên)
+  // Tạo mới danh mục cho gia đình (Chống trùng tên TRONG CÙNG TYPE)
   async create(familyId: string, dto: CreateCategoryDto) {
     const trimmedName = dto.name.trim();
 
-    // Kiểm tra tên danh mục đã tồn tại trong hệ thống hoặc gia đình chưa
+    // Kiểm tra tên danh mục đã tồn tại trong cùng TYPE (INCOME hoặc EXPENSE) chưa
     const existingCategory = await this.prisma.category.findFirst({
       where: {
+        type: dto.type, // 👈 Bổ sung điều kiện cùng loại thu/chi
         OR: [{ familyId: null }, { familyId }],
         name: {
           equals: trimmedName,
-          mode: 'insensitive', // Không phân biệt chữ hoa / chữ thường
+          mode: 'insensitive',
         },
       },
     });
 
     if (existingCategory) {
+      const typeLabel = dto.type === 'INCOME' ? 'Thu nhập' : 'Khoản chi';
       throw new BadRequestException(
-        `Danh mục "${trimmedName}" đã tồn tại trong hệ thống hoặc gia đình của bạn`,
+        `Danh mục "${trimmedName}" (${typeLabel}) đã tồn tại trong hệ thống hoặc gia đình của bạn`,
       );
     }
 
@@ -51,7 +53,7 @@ export class CategoriesService {
     });
   }
 
-  // Cập nhật danh mục (Chống trùng tên)
+  // Cập nhật danh mục (Chống trùng tên TRONG CÙNG TYPE)
   async update(id: string, familyId: string, dto: UpdateCategoryDto) {
     const category = await this.prisma.category.findUnique({
       where: { id },
@@ -67,14 +69,16 @@ export class CategoriesService {
       );
     }
 
-    // Nếu người dùng có cập nhật tên danh mục
-    if (dto.name) {
-      const trimmedName = dto.name.trim();
+    // Lấy type đích (dùng type mới từ dto nếu có, nếu không thì dùng type hiện tại của category)
+    const targetType = dto.type || category.type;
+    const trimmedName = dto.name ? dto.name.trim() : category.name;
 
-      // Kiểm tra trùng tên với các danh mục khác (trừ chính nó)
+    // Nếu có sự thay đổi về Tên hoặc Loại danh mục -> Cần kiểm tra trùng lặp
+    if (dto.name || dto.type) {
       const duplicateCategory = await this.prisma.category.findFirst({
         where: {
           id: { not: id }, // Loại trừ bản ghi hiện tại
+          type: targetType, // 👈 Kiểm tra trùng tên theo đúng type mới/hiện tại
           OR: [{ familyId: null }, { familyId }],
           name: {
             equals: trimmedName,
@@ -84,11 +88,14 @@ export class CategoriesService {
       });
 
       if (duplicateCategory) {
+        const typeLabel = targetType === 'INCOME' ? 'Thu nhập' : 'Khoản chi';
         throw new BadRequestException(
-          `Danh mục "${trimmedName}" đã tồn tại`,
+          `Danh mục "${trimmedName}" (${typeLabel}) đã tồn tại`,
         );
       }
+    }
 
+    if (dto.name) {
       dto.name = trimmedName;
     }
 
